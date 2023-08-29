@@ -16,5 +16,20 @@ class Post(Base):
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow)
     owner_id = Column(Integer, ForeignKey("user.id"))
+    comments = relationship("Comment", back_populates="post")
 
+    owner = relationship(User)
+
+
+class Comment(Base):
+    __tablename__ = "comment"
+
+    id = Column(Integer, primary_key=True, index=True)
+    commentary = Column(String(length=500))
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+    updated_at = Column(TIMESTAMP, default=datetime.utcnow)
+    post_id = Column(Integer, ForeignKey("post.id"))
+    owner_id = Column(Integer, ForeignKey("user.id"))
+
+    post = relationship(Post, back_populates="comments")
     owner = relationship(User)

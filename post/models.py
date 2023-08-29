@@ -29,7 +29,7 @@ class Comment(Base):
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow)
     post_id = Column(Integer, ForeignKey("post.id"))
-    owner_id = Column(Integer, ForeignKey("user.id"))
+    author_id = Column(Integer, ForeignKey("user.id"))
 
     post = relationship(Post, back_populates="comments")
-    owner = relationship(User)
+    author = relationship(User)

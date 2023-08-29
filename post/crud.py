@@ -11,7 +11,7 @@ from user.schemas import User, UserSingle
 
 
 async def get_all_posts(db: AsyncSession):
-    query = select(models.Post).options(selectinload(models.Post.author))
+    query = select(models.Post).options(selectinload(models.Post.owner))
 
     post_list = await db.execute(query)
 
@@ -19,8 +19,8 @@ async def get_all_posts(db: AsyncSession):
     for post in post_list.scalars():
         formatted_post = {
             "id": post.id,
-            "author_id": post.author_id,
-            "author": post.author,
+            "owner_id": post.owner_id,
+            "owner": post.owner,
             "title": post.title,
             "content": post.content,
             "created_at": post.created_at.strftime("%Y-%m-%d %H:%M:%S"),
@@ -36,7 +36,7 @@ async def post_selector_for_update_or_delete(
 ):
     query = (
         select(models.Post)
-        .where(models.Post.author_id == user.id)
+        .where(models.Post.owner_id == user.id)
         .where(models.Post.id == post_id)
     )
 
@@ -48,7 +48,7 @@ async def post_selector_for_update_or_delete(
 async def post_selector(post_id: int, db: AsyncSession):
     query = (
         select(models.Post)
-        .options(selectinload(models.Post.author))
+        .options(selectinload(models.Post.owner))
         .where(models.Post.id == post_id)
     )
     post = await db.execute(query)
@@ -67,8 +67,8 @@ async def get_single_post(post_id: int, db: AsyncSession):
         "content": post.content,
         "created_at": post.created_at.strftime("%Y-%m-%d %H:%M:%S"),
         "updated_at": post.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
-        "author_id": post.author_id,
-        "author": post.author,
+        "owner_id": post.owner_id,
+        "owner": post.owner,
     }
 
     return formatted_post
@@ -78,8 +78,8 @@ async def create_post(user: UserSingle, post: schemas.PostCreate, db: AsyncSessi
     db_post = models.Post(
         title=post.title,
         content=post.content,
-        author_id=user.id,
-        author=user,
+        owner_id=user.id,
+        owner=user,
     )
 
     db.add(db_post)

@@ -16,8 +16,8 @@ class PostCreate(PostBase):
 
 class Post(PostBase):
     id: int
-    author_id: int
-    author: UserSingle
+    owner_id: int
+    owner: UserSingle
     created_at: datetime
     updated_at: datetime
 
@@ -27,8 +27,8 @@ class Post(PostBase):
 
 class PostSingle(PostBase):
     id: int
-    author_id: int
-    author: User
+    owner_id: int
+    owner: User
     created_at: datetime
     updated_at: datetime
 

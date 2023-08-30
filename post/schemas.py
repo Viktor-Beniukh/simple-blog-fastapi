@@ -18,7 +18,7 @@ class PostCreate(PostBase):
 class Post(PostBase):
     id: int
     owner_id: int
-    owner: UserSingle
+    owner: User
     created_at: datetime
     updated_at: datetime
 
@@ -29,7 +29,7 @@ class Post(PostBase):
 class PostSingle(PostBase):
     id: int
     owner_id: int
-    owner: User
+    owner: UserSingle
     created_at: datetime
     updated_at: datetime
 
@@ -52,7 +52,7 @@ class Comment(CommentBase):
     author: UserSingle
     created_at: datetime
     updated_at: datetime
-    post: Post
+    post: PostSingle
 
     class Config:
         orm_mode = True

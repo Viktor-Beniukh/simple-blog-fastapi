@@ -11,7 +11,7 @@ from user.schemas import User, UserSingle
 router = APIRouter(prefix="/api", tags=["post"])
 
 
-@router.get("/posts/", response_model=list[schemas.Post])
+@router.get("/posts/", response_model=list[schemas.PostSingle])
 async def read_posts(db: AsyncSession = Depends(get_async_session)):
     return await crud.get_all_posts(db=db)
 
@@ -19,7 +19,7 @@ async def read_posts(db: AsyncSession = Depends(get_async_session)):
 @router.get(
     "/posts/{post_id}",
     status_code=status.HTTP_200_OK,
-    response_model=schemas.PostSingle,
+    response_model=schemas.Post,
 )
 async def get_post(
     post_id: int,

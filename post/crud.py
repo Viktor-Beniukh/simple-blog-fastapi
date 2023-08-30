@@ -4,9 +4,11 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from starlette import status
 
 from post import models
 from post import schemas
+
 from user.schemas import User, UserSingle
 
 
@@ -93,7 +95,9 @@ async def delete_post(post_id: int, user: User, db: AsyncSession):
     post = await post_selector_for_update_or_delete(post_id, user, db)
 
     if post is None:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Post not found"
+        )
 
     await db.delete(post)
     await db.commit()
@@ -105,7 +109,9 @@ async def update_post(
     db_post = await post_selector_for_update_or_delete(post_id, user, db)
 
     if db_post is None:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Post not found"
+        )
 
     db_post.title = post.title
     db_post.content = post.content
@@ -115,3 +121,85 @@ async def update_post(
     await db.refresh(db_post)
 
     return db_post
+
+
+async def get_all_comments(db: AsyncSession):
+    query = (
+        select(models.Comment)
+        .options(selectinload(models.Comment.post))
+        .options(selectinload(models.Comment.author))
+    )
+
+    comment_list = await db.execute(query)
+
+    formatted_comments = []
+    for comment in comment_list.scalars():
+        formatted_comment = {
+            "id": comment.id,
+            "author_id": comment.author_id,
+            "author": comment.author,
+            "post_id": comment.post_id,
+            "post": comment.post,
+            "commentary": comment.commentary,
+            "created_at": comment.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": comment.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        formatted_comments.append(formatted_comment)
+
+    return formatted_comments
+
+
+async def get_comments_by_post(db: AsyncSession, post_id: int) -> list[models.Comment]:
+    query = (
+        select(models.Comment)
+        .options(selectinload(models.Comment.post))
+        .options(selectinload(models.Comment.author))
+        .where(models.Comment.post_id == post_id)
+    )
+    comments = await db.execute(query)
+
+    return [comment[0] for comment in comments.fetchall()]
+
+
+async def get_post_by_id(db: AsyncSession, post_id: int):
+    query = select(models.Post).where(models.Post.id == post_id)
+    post = await db.execute(query)
+    return post.scalar_one_or_none()
+
+
+async def is_post_owner(post_id: int, user_id: int, db: AsyncSession) -> bool:
+    post = await get_post_by_id(db, post_id)
+    if post:
+        return post.owner_id == user_id
+    return False
+
+
+async def create_comment(
+    user: UserSingle,
+    comment: schemas.CommentCreate,
+    db: AsyncSession,
+):
+    post = await db.execute(
+        models.Post.__table__.select().where(models.Post.id == comment.post_id)
+    )
+
+    if post.fetchone() is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Post not found"
+        )
+
+    db_comment = models.Comment(**comment.model_dump(), author_id=user.id)
+
+    try:
+        db_comment.post_id = comment.post_id
+        db.add(db_comment)
+        await db.commit()
+        await db.refresh(db_comment)
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create comment",
+        )
+
+    return db_comment

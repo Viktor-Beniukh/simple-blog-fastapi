@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP
+from sqlalchemy.orm import relationship
 
 from database import Base
 
@@ -17,3 +18,6 @@ class User(Base):
     registered_at = Column(TIMESTAMP, default=datetime.utcnow)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
+
+    post = relationship("Post", lazy="selectin", back_populates="owner")
+    comment = relationship("Comment", lazy="selectin", back_populates="author")

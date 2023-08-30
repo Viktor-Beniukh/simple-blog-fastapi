@@ -16,9 +16,9 @@ class Post(Base):
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow)
     owner_id = Column(Integer, ForeignKey("user.id"))
-    comments = relationship("Comment", back_populates="post")
 
-    owner = relationship(User)
+    comment = relationship("Comment", lazy="selectin", back_populates="post")
+    owner = relationship(User, lazy="selectin", back_populates="post")
 
 
 class Comment(Base):
@@ -31,5 +31,5 @@ class Comment(Base):
     post_id = Column(Integer, ForeignKey("post.id"))
     author_id = Column(Integer, ForeignKey("user.id"))
 
-    post = relationship(Post, back_populates="comments")
-    author = relationship(User)
+    post = relationship(Post, lazy="selectin", back_populates="comment")
+    author = relationship(User, lazy="selectin", back_populates="comment")

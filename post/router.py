@@ -51,7 +51,7 @@ async def delete_post(
     post_id: int,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
-) -> dict[str]:
+):
 
     await crud.delete_post(post_id, user, db)
 
@@ -64,7 +64,7 @@ async def update_post(
     post: schemas.PostCreate,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
-) -> dict[str]:
+) -> dict[str, str]:
 
     await crud.update_post(post_id, post, user, db)
 
@@ -120,7 +120,7 @@ async def update_comment_route(
     updated_comment: schemas.CommentUpdate,
     db: AsyncSession = Depends(get_async_session),
     user: User = Depends(get_current_user),
-) -> dict[str]:
+) -> dict[str, str]:
 
     await crud.update_comment_for_post(post_id, comment_id, updated_comment, db, user)
 
@@ -135,7 +135,7 @@ async def delete_comment(
     comment_id: int,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
-) -> dict[str]:
+):
 
     await crud.delete_comment_for_post(post_id, comment_id, user, db)
 

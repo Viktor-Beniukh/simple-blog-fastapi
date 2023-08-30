@@ -22,7 +22,7 @@ from user.security import get_password_hash
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/token/")
 
 
-async def create_user(db: AsyncSession, user: schemas.UserCreate):
+async def create_user(db: AsyncSession, user: schemas.UserCreate) -> models.User:
     hashed_password = get_password_hash(user.password)
     db_user = models.User(
         email=user.email,
@@ -38,7 +38,7 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
     return db_user
 
 
-def create_tokens(data: dict):
+def create_tokens(data: dict) -> tuple[str, str]:
     access_expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRES_IN)
     refresh_expire = datetime.utcnow() + timedelta(minutes=REFRESH_TOKEN_EXPIRES_IN)
     access_token = jwt.encode(
@@ -56,7 +56,7 @@ def create_tokens(data: dict):
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_async_session)
-):
+) -> models.User:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
@@ -84,7 +84,7 @@ async def get_current_user(
         )
 
 
-async def get_user_by_email(db: AsyncSession, email: EmailStr):
+async def get_user_by_email(db: AsyncSession, email: EmailStr) -> models.User:
     query = select(models.User).where(models.User.email == email)
     user_email = await db.execute(query)
     return user_email.scalar_one_or_none()

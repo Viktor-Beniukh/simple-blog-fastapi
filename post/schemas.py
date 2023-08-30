@@ -46,6 +46,13 @@ class CommentCreate(CommentBase):
     pass
 
 
+class CommentUpdate(BaseModel):
+    commentary: str
+
+    class Config:
+        orm_mode = True
+
+
 class Comment(CommentBase):
     id: int
     author_id: int

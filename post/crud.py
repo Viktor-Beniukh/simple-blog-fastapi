@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -12,7 +13,8 @@ from post import schemas
 from user.schemas import User, UserSingle
 
 
-async def get_all_posts(db: AsyncSession):
+async def get_all_posts(db: AsyncSession) -> list[dict[str, Any]]:
+
     query = select(models.Post).options(selectinload(models.Post.owner))
 
     post_list = await db.execute(query)
@@ -35,7 +37,8 @@ async def get_all_posts(db: AsyncSession):
 
 async def post_selector_for_update_or_delete(
     post_id: int, user: User, db: AsyncSession
-):
+) -> models.Post:
+
     query = (
         select(models.Post)
         .where(models.Post.owner_id == user.id)
@@ -47,7 +50,8 @@ async def post_selector_for_update_or_delete(
     return post.scalar_one_or_none()
 
 
-async def post_selector(post_id: int, db: AsyncSession):
+async def post_selector(post_id: int, db: AsyncSession) -> models.Post:
+
     query = (
         select(models.Post)
         .options(selectinload(models.Post.owner))
@@ -57,7 +61,8 @@ async def post_selector(post_id: int, db: AsyncSession):
     return post.scalar_one_or_none()
 
 
-async def get_single_post(post_id: int, db: AsyncSession):
+async def get_single_post(post_id: int, db: AsyncSession) -> dict[str, str | int | Any]:
+
     post = await post_selector(post_id=post_id, db=db)
 
     if post is None:
@@ -76,7 +81,10 @@ async def get_single_post(post_id: int, db: AsyncSession):
     return formatted_post
 
 
-async def create_post(user: UserSingle, post: schemas.PostCreate, db: AsyncSession):
+async def create_post(
+    user: UserSingle, post: schemas.PostCreate, db: AsyncSession
+) -> models.Post:
+
     db_post = models.Post(
         title=post.title,
         content=post.content,
@@ -91,7 +99,8 @@ async def create_post(user: UserSingle, post: schemas.PostCreate, db: AsyncSessi
     return db_post
 
 
-async def delete_post(post_id: int, user: User, db: AsyncSession):
+async def delete_post(post_id: int, user: User, db: AsyncSession) -> None:
+
     post = await post_selector_for_update_or_delete(post_id, user, db)
 
     if post is None:
@@ -105,7 +114,8 @@ async def delete_post(post_id: int, user: User, db: AsyncSession):
 
 async def update_post(
     post_id: int, post: schemas.PostCreate, user: User, db: AsyncSession
-):
+) -> models.Post:
+
     db_post = await post_selector_for_update_or_delete(post_id, user, db)
 
     if db_post is None:
@@ -123,7 +133,8 @@ async def update_post(
     return db_post
 
 
-async def get_all_comments(db: AsyncSession):
+async def get_all_comments(db: AsyncSession) -> list[dict[str, Any]]:
+
     query = (
         select(models.Comment)
         .options(selectinload(models.Comment.post))
@@ -150,6 +161,7 @@ async def get_all_comments(db: AsyncSession):
 
 
 async def get_comments_by_post(db: AsyncSession, post_id: int) -> list[models.Comment]:
+
     query = (
         select(models.Comment)
         .options(selectinload(models.Comment.post))
@@ -161,24 +173,27 @@ async def get_comments_by_post(db: AsyncSession, post_id: int) -> list[models.Co
     return [comment[0] for comment in comments.fetchall()]
 
 
-async def get_post_by_id(db: AsyncSession, post_id: int):
+async def get_post_by_id(db: AsyncSession, post_id: int) -> models.Post:
+
     query = select(models.Post).where(models.Post.id == post_id)
     post = await db.execute(query)
+
     return post.scalar_one_or_none()
 
 
 async def is_post_owner(post_id: int, user_id: int, db: AsyncSession) -> bool:
+
     post = await get_post_by_id(db, post_id)
     if post:
         return post.owner_id == user_id
+
     return False
 
 
 async def create_comment(
-    user: UserSingle,
-    comment: schemas.CommentCreate,
-    db: AsyncSession,
-):
+    user: UserSingle, comment: schemas.CommentCreate, db: AsyncSession,
+) -> models.Comment:
+
     post = await db.execute(
         models.Post.__table__.select().where(models.Post.id == comment.post_id)
     )
@@ -203,3 +218,74 @@ async def create_comment(
         )
 
     return db_comment
+
+
+async def comment_selector_for_update_or_delete(
+    post_id: int, comment_id: int, user: User, db: AsyncSession
+) -> models.Comment:
+
+    query = (
+        select(models.Comment)
+        .where(models.Comment.author_id == user.id)
+        .where(models.Comment.post_id == post_id)
+        .where(models.Comment.id == comment_id)
+    )
+
+    comment = await db.execute(query)
+
+    return comment.scalar_one_or_none()
+
+
+async def update_comment_for_post(
+    post_id: int,
+    comment_id: int,
+    updated_comment: schemas.CommentUpdate,
+    db: AsyncSession,
+    user: User,
+) -> models.Comment:
+
+    db_post = await get_post_by_id(db, post_id)
+    if db_post is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Post not found"
+        )
+
+    db_comment = await comment_selector_for_update_or_delete(
+        post_id, comment_id, user, db
+    )
+
+    if db_comment is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found"
+        )
+
+    db_comment.commentary = updated_comment.commentary
+    db_comment.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(db_comment)
+
+    return db_comment
+
+
+async def delete_comment_for_post(
+    post_id: int, comment_id: int, user: User, db: AsyncSession
+) -> None:
+
+    db_post = await get_post_by_id(db, post_id)
+    if db_post is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Post not found"
+        )
+
+    db_comment = await comment_selector_for_update_or_delete(
+        post_id, comment_id, user, db
+    )
+
+    if db_comment is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found"
+        )
+
+    await db.delete(db_comment)
+    await db.commit()
